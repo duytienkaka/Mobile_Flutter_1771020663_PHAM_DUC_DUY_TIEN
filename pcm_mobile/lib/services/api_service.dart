@@ -73,26 +73,49 @@ class ApiService {
   void setToken(String token) {
     dio.options.headers['Authorization'] = 'Bearer $token';
   }
+
   Future<Map<String, dynamic>> getProfile(String token) async {
-  final response = await dio.get(
-    '/api/members/me',
-    options: Options(
-      headers: {
-        'Authorization': 'Bearer $token',
-      },
-    ),
-  );
+    final response = await dio.get(
+      '/api/members/me',
+      options: Options(
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      ),
+    );
 
-  return response.data;
-}
-Future<void> topUp(String token, double amount) async {
-  await dio.post(
-    '/api/wallet/topup',
-    data: {'amount': amount},
-    options: Options(
-      headers: {'Authorization': 'Bearer $token'},
-    ),
-  );
-}
+    return response.data;
+  }
 
+  Future<void> cancelBooking(String token, int bookingId) async {
+    await dio.delete(
+      '/api/bookings/$bookingId',
+      options: Options(headers: {'Authorization': 'Bearer $token'}),
+    );
+  }
+
+  Future<void> topUp(String token, double amount) async {
+    await dio.post(
+      '/api/wallet/topup',
+      data: {'amount': amount},
+      options: Options(headers: {'Authorization': 'Bearer $token'}),
+    );
+  }
+
+  Future<List<dynamic>> getCourtReviews(int courtId, String token) async {
+    final response = await dio.get(
+      '/api/courts/$courtId/reviews',
+      options: Options(headers: {'Authorization': 'Bearer $token'}),
+    );
+    return response.data;
+  }
+
+  Future<void> addCourtReview(
+      int courtId, String token, int rating, String comment) async {
+    await dio.post(
+      '/api/courts/$courtId/reviews',
+      data: {'rating': rating, 'comment': comment},
+      options: Options(headers: {'Authorization': 'Bearer $token'}),
+    );
+  }
 }

@@ -32,6 +32,20 @@ class MyApp extends StatelessWidget {
         return MaterialApp(
           debugShowCheckedModeBanner: false,
           title: 'PCM Booking',
+          theme: ThemeData(
+            primaryColor: Colors.lightGreen,
+            scaffoldBackgroundColor: Colors.white,
+            appBarTheme: const AppBarTheme(
+              backgroundColor: Colors.lightGreen,
+              foregroundColor: Colors.white,
+            ),
+            elevatedButtonTheme: ElevatedButtonThemeData(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.lightGreen,
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ),
           home: auth.token == null
               ? const LoginScreen()
               : const HomeScreen(),

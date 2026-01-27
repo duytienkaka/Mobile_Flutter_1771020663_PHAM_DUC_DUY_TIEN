@@ -17,6 +17,7 @@ class AuthProvider extends ChangeNotifier {
 
     if (token != null) {
       api.setToken(token!);
+      await loadProfile(); // Load profile when token exists
     }
 
     initialized = true;
@@ -31,6 +32,8 @@ class AuthProvider extends ChangeNotifier {
       token = await api.login(username, password);
 
       await storage.write(key: 'token', value: token);
+
+      await loadProfile(); // Load profile after login
 
       isLoading = false;
       notifyListeners();
@@ -56,8 +59,10 @@ class AuthProvider extends ChangeNotifier {
 
       final data = await api.getProfile(token);
 
+      debugPrint('Profile data: $data'); // Debug print
+
       fullName = data['fullName'];
-      walletBalance = data['walletBalance'];
+      walletBalance = (data['walletBalance'] as double?)?.toInt();
 
       notifyListeners();
     } catch (e) {

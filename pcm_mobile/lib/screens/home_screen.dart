@@ -5,6 +5,8 @@ import '../providers/auth_provider.dart';
 import 'court_screen.dart';
 import 'booking_history_screen.dart';
 import 'topup_screen.dart';
+import 'user_profile_screen.dart';
+import 'booking_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -15,6 +17,31 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
+  List courts = [];
+  bool courtsLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    loadAvailableCourts();
+  }
+
+  Future<void> loadAvailableCourts() async {
+    try {
+      final auth = Provider.of<AuthProvider>(context, listen: false);
+      final token = await auth.storage.read(key: 'token');
+      final data = await auth.api.getCourts(token!);
+      setState(() {
+        courts = data;
+      });
+    } catch (e) {
+      debugPrint('Load courts failed: $e');
+    } finally {
+      setState(() {
+        courtsLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -24,6 +51,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _homeTab(auth),
       const CourtScreen(),
       const BookingHistoryScreen(),
+      const UserProfileScreen(),
     ];
 
     return Scaffold(
@@ -55,52 +83,138 @@ class _HomeScreenState extends State<HomeScreen> {
             label: 'Đặt sân',
           ),
           BottomNavigationBarItem(icon: Icon(Icons.history), label: 'Lịch sử'),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Cá nhân'),
         ],
       ),
     );
   }
 
   Widget _homeTab(AuthProvider auth) {
-    return Center(
+    return Padding(
+      padding: const EdgeInsets.all(16),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.person, size: 90, color: Colors.blue),
+          const Icon(
+            Icons.account_circle,
+            size: 90,
+            color: Colors.lightGreen,
+          ),
 
           const SizedBox(height: 20),
 
           Text(
             auth.fullName != null ? 'Xin chào ${auth.fullName}' : 'Xin chào',
-            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-          ),
-
-          const SizedBox(height: 10),
-
-          Text(
-            auth.walletBalance != null
-                ? 'Số dư ví: ${auth.walletBalance!.toStringAsFixed(0)} VNĐ'
-                : 'Số dư ví: --',
-            style: const TextStyle(fontSize: 18),
-          ),
-
-          const SizedBox(height: 30),
-
-          ElevatedButton.icon(
-            icon: const Icon(Icons.account_balance_wallet),
-            label: const Text('Nạp tiền'),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const TopUpScreen()),
-              );
-            },
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: Colors.lightGreen,
+            ),
           ),
 
           const SizedBox(height: 20),
 
+          Card(
+            elevation: 4,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.account_balance_wallet,
+                    color: Colors.lightGreen,
+                    size: 28,
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    auth.walletBalance != null
+                        ? 'Số dư ví: ${auth.walletBalance} VNĐ'
+                        : 'Số dư ví: --',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 30),
+
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              icon: const Icon(Icons.add),
+              label: const Text('Nạp tiền'),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const TopUpScreen()),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 30),
+
           const Text(
-            'Chọn chức năng bên dưới để tiếp tục',
-            style: TextStyle(color: Colors.grey),
+            'Sân trống gợi ý (hiện tại)',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.lightGreen,
+            ),
+          ),
+
+          const SizedBox(height: 10),
+
+          Expanded(
+            child: courtsLoading
+                ? const Center(child: CircularProgressIndicator())
+                : courts.isEmpty
+                ? const Center(child: Text('Không có sân trống'))
+                : ListView.builder(
+                    itemCount: courts.length,
+                    itemBuilder: (context, index) {
+                      final court = courts[index];
+                      return Card(
+                        elevation: 2,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: ListTile(
+                          leading: const Icon(
+                            Icons.sports_soccer,
+                            color: Colors.lightGreen,
+                          ),
+                          title: Text(court['name']),
+                          subtitle: Text('Giá: ${court['pricePerHour']} VNĐ/h'),
+                          trailing: ElevatedButton(
+                            child: const Text('Đặt'),
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => BookingScreen(court: court),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      );
+                    },
+                  ),
           ),
         ],
       ),
