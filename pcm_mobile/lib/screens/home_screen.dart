@@ -7,6 +7,8 @@ import 'booking_history_screen.dart';
 import 'topup_screen.dart';
 import 'user_profile_screen.dart';
 import 'booking_screen.dart';
+import 'tournament_list_screen.dart';
+import 'admin_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -74,8 +76,15 @@ class _HomeScreenState extends State<HomeScreen> {
       body: pages[_currentIndex],
 
       bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
+        backgroundColor: Colors.indigo,
+
+        selectedItemColor: Colors.white,
+        unselectedItemColor: Colors.white70,
+
         currentIndex: _currentIndex,
         onTap: (i) => setState(() => _currentIndex = i),
+
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Trang chủ'),
           BottomNavigationBarItem(
@@ -83,7 +92,6 @@ class _HomeScreenState extends State<HomeScreen> {
             label: 'Đặt sân',
           ),
           BottomNavigationBarItem(icon: Icon(Icons.history), label: 'Lịch sử'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Cá nhân'),
         ],
       ),
     );
@@ -95,11 +103,7 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(
-            Icons.account_circle,
-            size: 90,
-            color: Colors.lightGreen,
-          ),
+          const Icon(Icons.account_circle, size: 90, color: Colors.lightGreen),
 
           const SizedBox(height: 20),
 
@@ -168,14 +172,53 @@ class _HomeScreenState extends State<HomeScreen> {
 
           const SizedBox(height: 30),
 
-          const Text(
-            'Sân trống gợi ý (hiện tại)',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.lightGreen,
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              icon: const Icon(Icons.emoji_events),
+              label: const Text('Giải đấu'),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const TournamentListScreen(),
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
             ),
           ),
+
+          if (auth.role == 'Admin') ...[
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.admin_panel_settings),
+                label: const Text('Quản lý Admin'),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const AdminScreen()),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  backgroundColor: Colors.red,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+          ],
+
+          const SizedBox(height: 30),
 
           const SizedBox(height: 10),
 

@@ -19,6 +19,10 @@ class _BookingScreenState extends State<BookingScreen> {
 
   DateTime selectedDate = DateTime.now();
 
+  bool isGroupBooking = false;
+  List<String> invitedUserNames = [];
+  TextEditingController inviteController = TextEditingController();
+
   void calculateTotal() {
     if (startTime == null || endTime == null) {
       totalPrice = 0;
@@ -103,26 +107,35 @@ class _BookingScreenState extends State<BookingScreen> {
     final end = selectedDate.copyWith(hour: endTime!.hour, minute: 0);
 
     try {
-      debugPrint('Booking court ${widget.court['id']} from $start to $end');
-      await auth.api.bookCourt(
-        token: token!,
-        courtId: widget.court['id'],
-        start: start,
-        end: end,
-      );
-
-      await auth.loadProfile();
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Đặt sân thành công')));
+      if (isGroupBooking) {
+        await auth.api.createGroupBooking(
+          token: token!,
+          courtId: widget.court['id'],
+          start: start,
+          end: end,
+          invitedUserNames: invitedUserNames,
+        );
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Tạo nhóm đặt sân thành công')),
+        );
+      } else {
+        await auth.api.bookCourt(
+          token: token!,
+          courtId: widget.court['id'],
+          start: start,
+          end: end,
+        );
+        await auth.loadProfile();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Đặt sân thành công')),
+        );
+      }
 
       Navigator.pop(context);
     } catch (e) {
-      debugPrint('Book error: $e');
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Lỗi đặt sân: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Lỗi: $e')),
+      );
     }
   }
 
@@ -202,6 +215,99 @@ class _BookingScreenState extends State<BookingScreen> {
 
             const SizedBox(height: 20),
 
+            Card(
+              elevation: 4,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.group,
+                      color: Colors.lightGreen,
+                      size: 28,
+                    ),
+                    const SizedBox(width: 12),
+                    const Text(
+                      'Đặt nhóm',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const Spacer(),
+                    Switch(
+                      value: isGroupBooking,
+                      onChanged: (value) => setState(() => isGroupBooking = value),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            if (isGroupBooking) ...[
+              const SizedBox(height: 20),
+              Card(
+                elevation: 4,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Mời bạn bè',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: inviteController,
+                              decoration: const InputDecoration(
+                                hintText: 'Tên đăng nhập',
+                                border: OutlineInputBorder(),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          ElevatedButton(
+                            onPressed: () {
+                              if (inviteController.text.isNotEmpty) {
+                                setState(() {
+                                  invitedUserNames.add(inviteController.text);
+                                  inviteController.clear();
+                                });
+                              }
+                            },
+                            child: const Text('Thêm'),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Wrap(
+                        spacing: 8,
+                        children: invitedUserNames.map((user) => Chip(
+                          label: Text(user),
+                          onDeleted: () => setState(() => invitedUserNames.remove(user)),
+                        )).toList(),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+
+            const SizedBox(height: 20),
+
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
@@ -252,23 +358,38 @@ class _BookingScreenState extends State<BookingScreen> {
               color: Colors.lightGreen.shade50,
               child: Padding(
                 padding: const EdgeInsets.all(16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                child: Column(
                   children: [
-                    const Icon(
-                      Icons.attach_money,
-                      color: Colors.lightGreen,
-                      size: 28,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.attach_money,
+                          color: Colors.lightGreen,
+                          size: 28,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Tổng tiền: ${totalPrice.toStringAsFixed(0)} VNĐ',
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.lightGreen,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Tổng tiền: ${totalPrice.toStringAsFixed(0)} VNĐ',
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.lightGreen,
+                    if (isGroupBooking && invitedUserNames.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Text(
+                          'Phần mỗi người: ${(totalPrice / (invitedUserNames.length + 1)).toStringAsFixed(0)} VNĐ',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            color: Colors.lightGreen,
+                          ),
+                        ),
                       ),
-                    ),
                   ],
                 ),
               ),
@@ -309,9 +430,9 @@ class _BookingScreenState extends State<BookingScreen> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: const Text(
-                  'XÁC NHẬN ĐẶT SÂN',
-                  style: TextStyle(fontSize: 18),
+                child: Text(
+                  isGroupBooking ? 'TẠO NHÓM ĐẶT SÂN' : 'XÁC NHẬN ĐẶT SÂN',
+                  style: const TextStyle(fontSize: 18),
                 ),
               ),
             ),

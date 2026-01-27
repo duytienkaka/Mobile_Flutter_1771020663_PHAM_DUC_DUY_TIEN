@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PcmBackend.Data;
 
@@ -10,9 +11,11 @@ using PcmBackend.Data;
 namespace PcmBackend.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260127072422_AddGroupBooking")]
+    partial class AddGroupBooking
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.2");
@@ -156,10 +159,6 @@ namespace PcmBackend.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("Role")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("Tier")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -208,160 +207,6 @@ namespace PcmBackend.Migrations
                     b.HasIndex("MemberId");
 
                     b.ToTable("Reviews");
-                });
-
-            modelBuilder.Entity("PcmBackend.Models.Tournament", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("CreatorId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime?>("EndDate")
-                        .HasColumnType("TEXT");
-
-                    b.Property<decimal>("EntryFee")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("MaxTeams")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<decimal>("PrizePool")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Sport")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("StartDate")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CreatorId");
-
-                    b.ToTable("Tournaments");
-                });
-
-            modelBuilder.Entity("PcmBackend.Models.TournamentMatch", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int?>("CourtId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("ScheduledTime")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int?>("ScoreA")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int?>("ScoreB")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<int?>("TeamAId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int?>("TeamBId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("TournamentId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int?>("WinnerId")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CourtId");
-
-                    b.HasIndex("TeamAId");
-
-                    b.HasIndex("TeamBId");
-
-                    b.HasIndex("TournamentId");
-
-                    b.HasIndex("WinnerId");
-
-                    b.ToTable("TournamentMatches");
-                });
-
-            modelBuilder.Entity("PcmBackend.Models.TournamentRegistration", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("MemberId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<decimal>("PaidAmount")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("PaidDate")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("TeamId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("TournamentId")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("MemberId");
-
-                    b.HasIndex("TeamId");
-
-                    b.HasIndex("TournamentId");
-
-                    b.ToTable("TournamentRegistrations");
-                });
-
-            modelBuilder.Entity("PcmBackend.Models.TournamentTeam", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool>("IsRegistered")
-                        .HasColumnType("INTEGER");
-
-                    b.PrimitiveCollection<string>("MemberIds")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("TeamName")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("TournamentId")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("TournamentId");
-
-                    b.ToTable("TournamentTeams");
                 });
 
             modelBuilder.Entity("PcmBackend.Models.WalletTransaction", b =>
@@ -469,90 +314,6 @@ namespace PcmBackend.Migrations
                     b.Navigation("Member");
                 });
 
-            modelBuilder.Entity("PcmBackend.Models.Tournament", b =>
-                {
-                    b.HasOne("PcmBackend.Models.Member", "Creator")
-                        .WithMany()
-                        .HasForeignKey("CreatorId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Creator");
-                });
-
-            modelBuilder.Entity("PcmBackend.Models.TournamentMatch", b =>
-                {
-                    b.HasOne("PcmBackend.Models.Court", "Court")
-                        .WithMany()
-                        .HasForeignKey("CourtId");
-
-                    b.HasOne("PcmBackend.Models.TournamentTeam", "TeamA")
-                        .WithMany()
-                        .HasForeignKey("TeamAId");
-
-                    b.HasOne("PcmBackend.Models.TournamentTeam", "TeamB")
-                        .WithMany()
-                        .HasForeignKey("TeamBId");
-
-                    b.HasOne("PcmBackend.Models.Tournament", "Tournament")
-                        .WithMany("Matches")
-                        .HasForeignKey("TournamentId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("PcmBackend.Models.TournamentTeam", "Winner")
-                        .WithMany()
-                        .HasForeignKey("WinnerId");
-
-                    b.Navigation("Court");
-
-                    b.Navigation("TeamA");
-
-                    b.Navigation("TeamB");
-
-                    b.Navigation("Tournament");
-
-                    b.Navigation("Winner");
-                });
-
-            modelBuilder.Entity("PcmBackend.Models.TournamentRegistration", b =>
-                {
-                    b.HasOne("PcmBackend.Models.Member", "Member")
-                        .WithMany()
-                        .HasForeignKey("MemberId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("PcmBackend.Models.TournamentTeam", "Team")
-                        .WithMany("Registrations")
-                        .HasForeignKey("TeamId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("PcmBackend.Models.Tournament", "Tournament")
-                        .WithMany()
-                        .HasForeignKey("TournamentId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Member");
-
-                    b.Navigation("Team");
-
-                    b.Navigation("Tournament");
-                });
-
-            modelBuilder.Entity("PcmBackend.Models.TournamentTeam", b =>
-                {
-                    b.HasOne("PcmBackend.Models.Tournament", "Tournament")
-                        .WithMany("Teams")
-                        .HasForeignKey("TournamentId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Tournament");
-                });
-
             modelBuilder.Entity("PcmBackend.Models.WalletTransaction", b =>
                 {
                     b.HasOne("PcmBackend.Models.Member", "Member")
@@ -579,18 +340,6 @@ namespace PcmBackend.Migrations
                     b.Navigation("Bookings");
 
                     b.Navigation("WalletTransactions");
-                });
-
-            modelBuilder.Entity("PcmBackend.Models.Tournament", b =>
-                {
-                    b.Navigation("Matches");
-
-                    b.Navigation("Teams");
-                });
-
-            modelBuilder.Entity("PcmBackend.Models.TournamentTeam", b =>
-                {
-                    b.Navigation("Registrations");
                 });
 #pragma warning restore 612, 618
         }

@@ -23,6 +23,8 @@ public class Member
 
     public string Tier { get; set; } = "Standard";
 
+    public string Role { get; set; } = "User"; // User, Admin
+
     public DateTime CreatedDate { get; set; }
 
     // Navigation

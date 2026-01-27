@@ -176,8 +176,111 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 ),
               ),
             ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.lock),
+                label: const Text('Đổi mật khẩu'),
+                onPressed: () => _showChangePasswordDialog(),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showChangePasswordDialog() {
+    final currentPasswordCtrl = TextEditingController();
+    final newPasswordCtrl = TextEditingController();
+    final confirmPasswordCtrl = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Đổi mật khẩu'),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: currentPasswordCtrl,
+                obscureText: true,
+                decoration: const InputDecoration(labelText: 'Mật khẩu hiện tại'),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Vui lòng nhập mật khẩu hiện tại';
+                  }
+                  return null;
+                },
+              ),
+              TextFormField(
+                controller: newPasswordCtrl,
+                obscureText: true,
+                decoration: const InputDecoration(labelText: 'Mật khẩu mới'),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Vui lòng nhập mật khẩu mới';
+                  }
+                  if (value.length < 6) {
+                    return 'Mật khẩu mới phải có ít nhất 6 ký tự';
+                  }
+                  return null;
+                },
+              ),
+              TextFormField(
+                controller: confirmPasswordCtrl,
+                obscureText: true,
+                decoration: const InputDecoration(labelText: 'Xác nhận mật khẩu mới'),
+                validator: (value) {
+                  if (value != newPasswordCtrl.text) {
+                    return 'Mật khẩu xác nhận không khớp';
+                  }
+                  return null;
+                },
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Hủy'),
+          ),
+          TextButton(
+            onPressed: () async {
+              if (formKey.currentState!.validate()) {
+                final auth = Provider.of<AuthProvider>(context, listen: false);
+                final success = await auth.changePassword(
+                  currentPasswordCtrl.text,
+                  newPasswordCtrl.text,
+                );
+
+                Navigator.pop(context);
+
+                if (success) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Đổi mật khẩu thành công')),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Đổi mật khẩu thất bại')),
+                  );
+                }
+              }
+            },
+            child: const Text('Đổi mật khẩu'),
+          ),
+        ],
       ),
     );
   }

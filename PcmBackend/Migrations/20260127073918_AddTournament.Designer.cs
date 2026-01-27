@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PcmBackend.Data;
 
@@ -10,9 +11,11 @@ using PcmBackend.Data;
 namespace PcmBackend.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260127073918_AddTournament")]
+    partial class AddTournament
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.2");
@@ -156,10 +159,6 @@ namespace PcmBackend.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("Role")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("Tier")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -299,8 +298,6 @@ namespace PcmBackend.Migrations
                     b.HasIndex("TeamBId");
 
                     b.HasIndex("TournamentId");
-
-                    b.HasIndex("WinnerId");
 
                     b.ToTable("TournamentMatches");
                 });
@@ -500,10 +497,6 @@ namespace PcmBackend.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("PcmBackend.Models.TournamentTeam", "Winner")
-                        .WithMany()
-                        .HasForeignKey("WinnerId");
-
                     b.Navigation("Court");
 
                     b.Navigation("TeamA");
@@ -511,8 +504,6 @@ namespace PcmBackend.Migrations
                     b.Navigation("TeamB");
 
                     b.Navigation("Tournament");
-
-                    b.Navigation("Winner");
                 });
 
             modelBuilder.Entity("PcmBackend.Models.TournamentRegistration", b =>
@@ -524,7 +515,7 @@ namespace PcmBackend.Migrations
                         .IsRequired();
 
                     b.HasOne("PcmBackend.Models.TournamentTeam", "Team")
-                        .WithMany("Registrations")
+                        .WithMany()
                         .HasForeignKey("TeamId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -586,11 +577,6 @@ namespace PcmBackend.Migrations
                     b.Navigation("Matches");
 
                     b.Navigation("Teams");
-                });
-
-            modelBuilder.Entity("PcmBackend.Models.TournamentTeam", b =>
-                {
-                    b.Navigation("Registrations");
                 });
 #pragma warning restore 612, 618
         }

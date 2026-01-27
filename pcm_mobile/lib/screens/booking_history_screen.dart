@@ -12,6 +12,7 @@ class BookingHistoryScreen extends StatefulWidget {
 
 class _BookingHistoryScreenState extends State<BookingHistoryScreen> {
   List bookings = [];
+  List groupBookings = [];
   bool loading = true;
   String? error;
 
@@ -27,9 +28,11 @@ class _BookingHistoryScreenState extends State<BookingHistoryScreen> {
       final token = await auth.storage.read(key: 'token');
 
       final data = await auth.api.getMyBookings(token!);
+      final groupData = await auth.api.getMyGroupBookings(token!);
 
       setState(() {
         bookings = data;
+        groupBookings = groupData;
       });
     } catch (e) {
       setState(() {
@@ -113,6 +116,21 @@ class _BookingHistoryScreenState extends State<BookingHistoryScreen> {
         debugPrint('Cancel error: $e');
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Lỗi hủy booking')));
       }
+    }
+  }
+
+  Future<void> payGroupShare(int groupId) async {
+    try {
+      final auth = Provider.of<AuthProvider>(context, listen: false);
+      final token = await auth.storage.read(key: 'token');
+
+      await auth.api.payGroupShare(token!, groupId);
+
+      await loadBookings();
+      await auth.loadProfile();
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Thanh toán thành công')));
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi thanh toán: $e')));
     }
   }
 

@@ -96,19 +96,113 @@ using (var scope = app.Services.CreateScope())
 
     if (!db.Members.Any())
     {
+        // Admin account
         db.Members.Add(new Member
         {
             UserName = "admin",
-            Password = "123",
-            FullName = "Admin PCM",
-            WalletBalance = 5000000,
-            Tier = "Gold"
+            Password = "admin123",
+            FullName = "Administrator",
+            WalletBalance = 10000000,
+            Tier = "Platinum",
+            Role = "Admin",
+            CreatedDate = DateTime.UtcNow
+        });
+
+        // User accounts
+        db.Members.Add(new Member
+        {
+            UserName = "user1",
+            Password = "user123",
+            FullName = "Nguyễn Văn A",
+            WalletBalance = 500000,
+            Tier = "Silver",
+            Role = "User",
+            CreatedDate = DateTime.UtcNow
+        });
+
+        db.Members.Add(new Member
+        {
+            UserName = "user2",
+            Password = "user123",
+            FullName = "Trần Thị B",
+            WalletBalance = 750000,
+            Tier = "Gold",
+            Role = "User",
+            CreatedDate = DateTime.UtcNow
+        });
+
+        db.Members.Add(new Member
+        {
+            UserName = "user3",
+            Password = "user123",
+            FullName = "Lê Văn C",
+            WalletBalance = 300000,
+            Tier = "Bronze",
+            Role = "User",
+            CreatedDate = DateTime.UtcNow
         });
 
         db.Courts.Add(new Court
         {
             Name = "Sân 1",
-            PricePerHour = 120000
+            PricePerHour = 120000,
+            IsActive = true
+        });
+
+        db.Courts.Add(new Court
+        {
+            Name = "Sân 2",
+            PricePerHour = 100000,
+            IsActive = true
+        });
+
+        db.Courts.Add(new Court
+        {
+            Name = "Sân 3",
+            PricePerHour = 150000,
+            IsActive = true
+        });
+
+        db.Courts.Add(new Court
+        {
+            Name = "Sân Futsal A",
+            PricePerHour = 80000,
+            IsActive = true
+        });
+
+        db.Courts.Add(new Court
+        {
+            Name = "Sân Futsal B",
+            PricePerHour = 90000,
+            IsActive = true
+        });
+
+        db.Courts.Add(new Court
+        {
+            Name = "Sân VIP 1",
+            PricePerHour = 200000,
+            IsActive = true
+        });
+
+        db.Courts.Add(new Court
+        {
+            Name = "Sân VIP 2",
+            PricePerHour = 180000,
+            IsActive = true
+        });
+
+        db.Courts.Add(new Court
+        {
+            Name = "Sân Mini 1",
+            PricePerHour = 70000,
+            IsActive = true
+        });
+
+        db.Courts.Add(new Court
+        {
+            Name = "Sân Mini 2",
+            PricePerHour = 75000,
+            IsActive = true
         });
 
         db.SaveChanges();

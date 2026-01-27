@@ -31,7 +31,8 @@ public class MembersController : ControllerBase
             member.Id,
             member.FullName,
             member.WalletBalance,
-            member.Tier
+            member.Tier,
+            member.Role
         });
     }
 }

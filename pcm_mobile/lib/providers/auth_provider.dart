@@ -10,6 +10,7 @@ class AuthProvider extends ChangeNotifier {
   String? token;
   String? fullName;
   int? walletBalance;
+  String? role;
   bool initialized = false;
 
   Future<void> initAuth() async {
@@ -63,6 +64,7 @@ class AuthProvider extends ChangeNotifier {
 
       fullName = data['fullName'];
       walletBalance = (data['walletBalance'] as double?)?.toInt();
+      role = data['role'];
 
       notifyListeners();
     } catch (e) {
@@ -76,5 +78,44 @@ class AuthProvider extends ChangeNotifier {
 
     await api.topUp(token, amount);
     await loadProfile();
+  }
+
+  Future<bool> register(String username, String password, String fullName) async {
+    try {
+      isLoading = true;
+      notifyListeners();
+
+      await api.register(username, password, fullName);
+
+      isLoading = false;
+      notifyListeners();
+
+      return true;
+    } catch (_) {
+      isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> changePassword(String currentPassword, String newPassword) async {
+    try {
+      isLoading = true;
+      notifyListeners();
+
+      final token = await storage.read(key: 'token');
+      if (token == null) return false;
+
+      await api.changePassword(token, currentPassword, newPassword);
+
+      isLoading = false;
+      notifyListeners();
+
+      return true;
+    } catch (_) {
+      isLoading = false;
+      notifyListeners();
+      return false;
+    }
   }
 }
