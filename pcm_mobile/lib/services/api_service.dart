@@ -70,7 +70,12 @@ class ApiService {
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
 
-    return response.data;
+    final body = response.data;
+    if (body is List) return body;
+    if (body is Map && body['data'] is List) {
+      return List<dynamic>.from(body['data'] as List);
+    }
+    throw Exception('Unexpected courts response: ${body.runtimeType}');
   }
 
   Future<Map<String, dynamic>> bookCourt({
@@ -122,6 +127,23 @@ class ApiService {
       data: {'amount': amount},
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
+  }
+
+  Future<void> requestTopUp(String token, double amount) async {
+    await dio.post(
+      '/api/wallet/topup/request',
+      data: {'amount': amount},
+      options: Options(headers: {'Authorization': 'Bearer $token'}),
+    );
+  }
+
+  Future<List<dynamic>> getWalletHistory(String token) async {
+    final response = await dio.get(
+      '/api/wallet/history',
+      options: Options(headers: {'Authorization': 'Bearer $token'}),
+    );
+
+    return response.data;
   }
 
   Future<List<dynamic>> getCourtReviews(int courtId, String token) async {
@@ -214,18 +236,16 @@ class ApiService {
     return response.data;
   }
 
-  Future<Map<String, dynamic>> registerForTournament({
+  Future<void> registerForTournament({
     required String token,
     required int tournamentId,
     required String teamName,
   }) async {
-    final response = await dio.post(
+    await dio.post(
       '/api/tournaments/$tournamentId/register',
       data: {'teamName': teamName},
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
-
-    return response.data;
   }
 
   Future<Map<String, dynamic>> getTournamentDetails(int tournamentId, String token) async {
@@ -250,7 +270,7 @@ class ApiService {
   Future<void> updateUserRole(String token, int userId, String role) async {
     await dio.put(
       '/api/admin/users/$userId/role',
-      data: role,
+      data: {'role': role},
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
   }
@@ -325,6 +345,13 @@ class ApiService {
     );
 
     return response.data;
+  }
+
+  Future<void> approveTopUpRequest(String token, int requestId) async {
+    await dio.post(
+      '/api/admin/topup-requests/$requestId/approve',
+      options: Options(headers: {'Authorization': 'Bearer $token'}),
+    );
   }
 
   Future<void> createCourtAdmin(String token, Map<String, dynamic> court) async {

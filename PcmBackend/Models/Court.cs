@@ -16,5 +16,5 @@ public class Court
     public bool IsActive { get; set; }
 
     // Navigation
-    public ICollection<Booking> Bookings { get; set; }
+    public ICollection<Booking> Bookings { get; set; } = new List<Booking>();
 }

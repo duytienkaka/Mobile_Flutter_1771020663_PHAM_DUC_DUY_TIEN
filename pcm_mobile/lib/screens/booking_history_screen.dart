@@ -104,13 +104,12 @@ class _BookingHistoryScreenState extends State<BookingHistoryScreen> {
         );
         debugPrint('Cancel response: ${response.statusCode}');
 
-        // Remove the canceled booking from the list
         setState(() {
           bookings.removeWhere((booking) => booking['id'] == id);
         });
 
-        await loadBookings(); // Reload
-        await auth.loadProfile(); // Update wallet
+        await loadBookings();
+        await auth.loadProfile();
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Đã hủy và hoàn tiền')));
       } catch (e) {
         debugPrint('Cancel error: $e');
@@ -141,58 +140,165 @@ class _BookingHistoryScreenState extends State<BookingHistoryScreen> {
       body: RefreshIndicator(
         onRefresh: loadBookings,
         child: loading
-          ? const Center(child: CircularProgressIndicator())
-          : error != null
-          ? Center(
-              child: Text(error!, style: const TextStyle(color: Colors.red)),
-            )
-          : bookings.isEmpty
-          ? const Center(child: Text('Chưa có lịch sử đặt sân'))
-          : ListView.builder(
-              itemCount: bookings.length,
-              itemBuilder: (context, index) {
-                final b = bookings[index];
-                return Card(
-                  margin: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  elevation: 4,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: ListTile(
-                    onTap: () => showBookingDetail(b),
-                    leading: const Icon(
-                      Icons.history,
-                      color: Colors.lightGreen,
-                    ),
-                    title: Text(
-                      b['courtName'],
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    subtitle: Text(
-                      '${DateTime.parse(b['startTime']).toLocal().toString().split(' ')[0]} - ${DateTime.parse(b['startTime']).toLocal().hour}:${DateTime.parse(b['startTime']).toLocal().minute.toString().padLeft(2, '0')} → ${DateTime.parse(b['endTime']).toLocal().hour}:${DateTime.parse(b['endTime']).toLocal().minute.toString().padLeft(2, '0')}',
-                      style: const TextStyle(color: Colors.grey),
-                    ),
-                    trailing: (b['status'] == 'Confirmed' && DateTime.parse(b['startTime']).isAfter(DateTime.now()))
-                        ? ElevatedButton(
-                      onPressed: () => cancelBooking(b['id']),
-                      child: const Text('Hủy'),
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                    )
-                        : Text(
-                      '${b['totalPrice']} VNĐ',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.lightGreen,
+            ? const Center(child: CircularProgressIndicator())
+            : error != null
+                ? Center(child: Text(error!, style: const TextStyle(color: Colors.red)))
+                : (bookings.isEmpty && groupBookings.isEmpty)
+                    ? const Center(child: Text('Chưa có lịch sử đặt sân'))
+                    : ListView(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFF16A34A), Color(0xFF0EA5E9)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.history_edu, color: Colors.white, size: 32),
+                                const SizedBox(width: 12),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Tất cả lịch sử',
+                                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '${bookings.length + groupBookings.length} lượt',
+                                      style: const TextStyle(color: Colors.white70),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          const SizedBox(height: 12),
+
+                          if (bookings.isNotEmpty) ...[
+                            Text('Đặt sân cá nhân', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                            const SizedBox(height: 8),
+                            ...bookings.map((b) => _bookingCard(b)).toList(),
+                            const SizedBox(height: 12),
+                          ],
+
+                          if (groupBookings.isNotEmpty) ...[
+                            Text('Đặt sân nhóm', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                            const SizedBox(height: 8),
+                            ...groupBookings.map((b) => _bookingCard(b, isGroup: true)).toList(),
+                          ],
+                        ],
                       ),
-                    ),
-                  ),
-                );
-              },
-            ),
       ),
     );
+  }
+
+  Widget _bookingCard(Map b, {bool isGroup = false}) {
+    final start = DateTime.parse(b['startTime']).toLocal();
+    final end = DateTime.parse(b['endTime']).toLocal();
+    final canCancel = (b['status'] == 'Confirmed' && start.isAfter(DateTime.now()) && !isGroup);
+    final priceLabel = b['totalPrice'] != null ? '${b['totalPrice']} VNĐ' : '';
+
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE0F2F1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(isGroup ? Icons.groups_3 : Icons.sports_tennis, color: const Color(0xFF16A34A)),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        b['courtName'] ?? 'Sân',
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${_formatDate(start)} | ${_formatTime(start)} → ${_formatTime(end)}',
+                        style: const TextStyle(color: Color(0xFF64748B)),
+                      ),
+                    ],
+                  ),
+                ),
+                if (priceLabel.isNotEmpty)
+                  Text(
+                    priceLabel,
+                    style: const TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF16A34A)),
+                  ),
+              ],
+            ),
+
+            const SizedBox(height: 10),
+
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.shield_outlined, size: 18, color: Color(0xFF94A3B8)),
+                    const SizedBox(width: 6),
+                    Text(b['status'] ?? 'Unknown', style: const TextStyle(color: Color(0xFF94A3B8))),
+                  ],
+                ),
+                Row(
+                  children: [
+                    if (isGroup && (b['hasPaid'] == false))
+                      TextButton(
+                        onPressed: () => payGroupShare(b['groupId']),
+                        child: const Text('Thanh toán phần mình'),
+                      ),
+                    if (canCancel)
+                      TextButton(
+                        onPressed: () => cancelBooking(b['id']),
+                        child: const Text('Hủy', style: TextStyle(color: Colors.red)),
+                      )
+                    else
+                      TextButton(
+                        onPressed: () => showBookingDetail(b),
+                        child: const Text('Chi tiết'),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatDate(DateTime d) {
+    final parts = d.toLocal().toString().split(' ').first.split('-');
+    return '${parts[2]}/${parts[1]}/${parts[0]}';
+  }
+
+  String _formatTime(DateTime d) {
+    final h = d.hour.toString().padLeft(2, '0');
+    final m = d.minute.toString().padLeft(2, '0');
+    return '$h:$m';
   }
 }

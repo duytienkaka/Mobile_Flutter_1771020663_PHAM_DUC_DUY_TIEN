@@ -16,6 +16,7 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
   List bookings = [];
   List tournaments = [];
   List topUpRequests = [];
+  String? topUpError;
   bool loading = true;
 
   @override
@@ -30,22 +31,26 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
       final auth = Provider.of<AuthProvider>(context, listen: false);
       final token = await auth.storage.read(key: 'token');
 
-      // Load all data in parallel
-      final results = await Future.wait([
-        auth.api.getAdminUsers(token!),
-        auth.api.getAdminCourts(token),
-        auth.api.getAdminBookings(token),
-        auth.api.getAdminTournaments(token),
-        auth.api.getAdminTopUpRequests(token),
-      ]);
+      // Load in parallel but tolerate failures per section
+      final results = await Future.wait<List<dynamic>>(
+        [
+          _safeCall(() => auth.api.getAdminUsers(token!)),
+          _safeCall(() => auth.api.getAdminCourts(token!)),
+          _safeCall(() => auth.api.getAdminBookings(token!)),
+          _safeCall(() => auth.api.getAdminTournaments(token!)),
+          _loadTopUps(token!),
+        ],
+      );
 
       setState(() {
-        users = results[0] as List;
-        courts = results[1] as List;
-        bookings = results[2] as List;
-        tournaments = results[3] as List;
-        topUpRequests = results[4] as List;
+        users = results[0];
+        courts = results[1];
+        bookings = results[2];
+        tournaments = results[3];
+        topUpRequests = results[4];
       });
+
+      debugPrint('Admin data loaded: users=${users.length}, courts=${courts.length}, bookings=${bookings.length}, tournaments=${tournaments.length}, topups=${topUpRequests.length}');
     } catch (e) {
       debugPrint('Load admin data failed: $e');
     } finally {
@@ -77,108 +82,126 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
           ],
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _buildUsersTab(),
-          _buildCourtsTab(),
-          _buildBookingsTab(),
-          _buildTournamentsTab(),
-          _buildTopUpRequestsTab(),
-        ],
+      body: Container(
+        color: const Color(0xFFF6F7FB),
+        child: TabBarView(
+          controller: _tabController,
+          children: [
+            _buildUsersTab(),
+            _buildCourtsTab(),
+            _buildBookingsTab(),
+            _buildTournamentsTab(),
+            _buildTopUpRequestsTab(),
+          ],
+        ),
       ),
       floatingActionButton: _buildFloatingActionButton(),
     );
   }
 
   Widget _buildUsersTab() {
-    return ListView.builder(
-      itemCount: users.length,
-      itemBuilder: (context, index) {
-        final user = users[index];
-        return Card(
-          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          child: ListTile(
-            leading: const Icon(Icons.person),
-            title: Text(user['fullName']),
-            subtitle: Text('${user['userName']} - ${user['role']}'),
+    return _tabScaffold(
+      header: _statChips([
+        ('Tổng', users.length.toString(), Colors.blue),
+        ('Admin', users.where((u) => ((u['role'] ?? '').toString().toLowerCase() == 'admin')).length.toString(), Colors.orange),
+      ]),
+      child: ListView.builder(
+        itemCount: users.length,
+        itemBuilder: (context, index) {
+          final user = users[index];
+          return _cardTile(
+            icon: Icons.person,
+            iconColor: Colors.indigo,
+            title: user['fullName'] ?? '--',
+            subtitle: '${user['userName'] ?? ''} · ${(user['role'] ?? '').toString()}',
             trailing: PopupMenuButton(
               onSelected: (value) => _handleUserAction(user, value),
               itemBuilder: (_) => [
-                const PopupMenuItem(value: 'admin', child: Text('Đặt làm Admin')),
-                const PopupMenuItem(value: 'user', child: Text('Đặt làm User')),
+                const PopupMenuItem(value: 'Admin', child: Text('Đặt làm Admin')),
+                const PopupMenuItem(value: 'User', child: Text('Đặt làm User')),
                 const PopupMenuItem(value: 'delete', child: Text('Xóa tài khoản')),
               ],
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 
   Widget _buildCourtsTab() {
-    return ListView.builder(
-      itemCount: courts.length,
-      itemBuilder: (context, index) {
-        final court = courts[index];
-        return Card(
-          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          child: ListTile(
-            leading: const Icon(Icons.sports_soccer),
-            title: Text(court['name']),
-            subtitle: Text('${court['pricePerHour']} VNĐ/h - ${court['isActive'] ? 'Hoạt động' : 'Không hoạt động'}'),
+    return _tabScaffold(
+      header: _statChips([
+        ('Tổng', courts.length.toString(), Colors.teal),
+        ('Hoạt động', courts.where((c) => c['isActive'] == true).length.toString(), Colors.green),
+      ]),
+      child: ListView.builder(
+        itemCount: courts.length,
+        itemBuilder: (context, index) {
+          final court = courts[index];
+          final active = court['isActive'] == true;
+          return _cardTile(
+            icon: Icons.sports_soccer,
+            iconColor: Colors.teal,
+            title: court['name'] ?? 'Sân',
+            subtitle: '${court['pricePerHour'] ?? '--'} VNĐ/h · ${active ? 'Hoạt động' : 'Tạm dừng'}',
             trailing: PopupMenuButton(
               onSelected: (value) => _handleCourtAction(court, value),
               itemBuilder: (_) => [
-                const PopupMenuItem(value: 'toggle', child: Text('Chuyển trạng thái')),
+                PopupMenuItem(value: 'toggle', child: Text(active ? 'Tạm dừng' : 'Kích hoạt')),
                 const PopupMenuItem(value: 'delete', child: Text('Xóa sân')),
               ],
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 
   Widget _buildBookingsTab() {
-    return ListView.builder(
-      itemCount: bookings.length,
-      itemBuilder: (context, index) {
-        final booking = bookings[index];
-        return Card(
-          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          child: ListTile(
-            leading: const Icon(Icons.book_online),
-            title: Text('${booking['courtName']} - ${booking['memberName']}'),
-            subtitle: Text('${booking['startTime']} - ${booking['endTime']}'),
+    return _tabScaffold(
+      header: _statChips([
+        ('Tổng', bookings.length.toString(), Colors.purple),
+      ]),
+      child: ListView.builder(
+        itemCount: bookings.length,
+        itemBuilder: (context, index) {
+          final booking = bookings[index];
+          return _cardTile(
+            icon: Icons.book_online,
+            iconColor: Colors.deepPurple,
+            title: '${booking['courtName'] ?? ''} · ${booking['memberName'] ?? ''}',
+            subtitle: '${booking['startTime'] ?? ''} → ${booking['endTime'] ?? ''}',
             trailing: IconButton(
               icon: const Icon(Icons.delete, color: Colors.red),
               onPressed: () => _deleteBooking(booking['id']),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 
   Widget _buildTournamentsTab() {
-    return ListView.builder(
-      itemCount: tournaments.length,
-      itemBuilder: (context, index) {
-        final tournament = tournaments[index];
-        return Card(
-          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          child: ListTile(
-            leading: const Icon(Icons.emoji_events),
-            title: Text(tournament['name']),
-            subtitle: Text('${tournament['sport']} - ${tournament['status']}'),
+    return _tabScaffold(
+      header: _statChips([
+        ('Tổng', tournaments.length.toString(), Colors.amber),
+      ]),
+      child: ListView.builder(
+        itemCount: tournaments.length,
+        itemBuilder: (context, index) {
+          final tournament = tournaments[index];
+          return _cardTile(
+            icon: Icons.emoji_events,
+            iconColor: Colors.orange,
+            title: tournament['name'] ?? 'Giải đấu',
+            subtitle: '${tournament['sport'] ?? ''} · ${tournament['status'] ?? ''}',
             trailing: IconButton(
               icon: const Icon(Icons.delete, color: Colors.red),
               onPressed: () => _deleteTournament(tournament['id']),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 
@@ -273,23 +296,53 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
   }
 
   Widget _buildTopUpRequestsTab() {
-    return ListView.builder(
-      itemCount: topUpRequests.length,
-      itemBuilder: (context, index) {
-        final request = topUpRequests[index];
-        return Card(
-          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          child: ListTile(
-            leading: const Icon(Icons.account_balance_wallet, color: Colors.green),
-            title: Text('${request['member']['fullName']} - ${request['amount']} VNĐ'),
-            subtitle: Text('Thời gian: ${DateTime.parse(request['createdDate']).toLocal()}'),
-            trailing: ElevatedButton(
-              onPressed: () => _approveTopUp(request['id']),
-              child: const Text('Duyệt'),
-            ),
-          ),
-        );
-      },
+    return _tabScaffold(
+      header: _statChips([
+        ('Chờ duyệt', topUpRequests.length.toString(), Colors.red),
+      ]),
+      child: RefreshIndicator(
+        onRefresh: loadData,
+        child: topUpRequests.isEmpty
+            ? ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: [
+                  const SizedBox(height: 140),
+                  if (topUpError != null)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Text(
+                        'Không tải được yêu cầu nạp tiền: $topUpError',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.red),
+                      ),
+                    ),
+                  const Center(child: Text('Chưa có yêu cầu nạp tiền chờ duyệt')),
+                ],
+              )
+            : ListView.builder(
+                physics: const AlwaysScrollableScrollPhysics(),
+                itemCount: topUpRequests.length,
+                itemBuilder: (context, index) {
+                  final request = topUpRequests[index];
+                  final member = request['member'] ?? {};
+                  final fullName = (member['fullName'] ?? '').toString();
+                  final userName = (member['userName'] ?? '').toString();
+                  final amount = (request['amount'] as num?)?.toDouble() ?? 0;
+                  final created = DateTime.tryParse(request['createdDate']?.toString() ?? '');
+                  return _cardTile(
+                    icon: Icons.account_balance_wallet,
+                    iconColor: Colors.green,
+                    title: '${fullName.isNotEmpty ? fullName : 'Người dùng'} (${userName.isNotEmpty ? userName : ''})',
+                    subtitle: 'Số tiền: ${amount.toStringAsFixed(0)} VNĐ\nThời gian: ${created != null ? created.toLocal() : ''}',
+                    trailing: ElevatedButton(
+                      onPressed: () => _approveTopUp(request['id']),
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                      child: const Text('Duyệt'),
+                    ),
+                  );
+                },
+              ),
+      ),
     );
   }
 
@@ -552,16 +605,104 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
   }
 
   void _approveTopUp(int transactionId) async {
-    // For now, just show a message that top-up is approved
-    // In a real app, you'd update the transaction status
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Đã duyệt yêu cầu nạp tiền')),
-    );
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final token = await auth.storage.read(key: 'token');
+    try {
+      await auth.api.approveTopUpRequest(token!, transactionId);
+      await loadData();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Đã duyệt yêu cầu nạp tiền')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Lỗi: $e')),
+      );
+    }
+  }
+
+  Future<List<dynamic>> _safeCall(Future<List<dynamic>> Function() call) async {
+    try {
+      return await call();
+    } catch (e) {
+      debugPrint('Admin data load error: $e');
+      return [];
+    }
+  }
+
+  Future<List<dynamic>> _loadTopUps(String token) async {
+    try {
+      final data = await Provider.of<AuthProvider>(context, listen: false).api.getAdminTopUpRequests(token);
+      topUpError = null;
+      return data;
+    } catch (e) {
+      topUpError = e.toString();
+      debugPrint('Top-up load error: $e');
+      return [];
+    }
   }
 
   @override
   void dispose() {
     _tabController.dispose();
     super.dispose();
+  }
+
+  Widget _tabScaffold({required Widget child, Widget? header}) {
+    return Column(
+      children: [
+        if (header != null)
+          Container(
+            width: double.infinity,
+            color: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: header,
+          ),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: child,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _cardTile({
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String subtitle,
+    Widget? trailing,
+  }) {
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      elevation: 2,
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: iconColor.withOpacity(0.12),
+          child: Icon(icon, color: iconColor),
+        ),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+        subtitle: Text(subtitle),
+        trailing: trailing,
+      ),
+    );
+  }
+
+  Widget _statChips(List<(String, String, Color)> items) {
+    return Wrap(
+      spacing: 10,
+      runSpacing: 8,
+      children: items
+          .map(
+            (item) => Chip(
+              label: Text('${item.$1}: ${item.$2}', style: const TextStyle(fontWeight: FontWeight.w600)),
+              backgroundColor: item.$3.withOpacity(0.12),
+              labelStyle: TextStyle(color: item.$3),
+            ),
+          )
+          .toList(),
+    );
   }
 }

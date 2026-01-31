@@ -12,9 +12,11 @@ class AuthProvider extends ChangeNotifier {
   int? walletBalance;
   String? role;
   bool initialized = false;
+  final Set<int> favoriteCourtIds = {};
 
   Future<void> initAuth() async {
     token = await storage.read(key: 'token');
+    await _loadFavorites();
 
     if (token != null) {
       api.setToken(token!);
@@ -35,6 +37,7 @@ class AuthProvider extends ChangeNotifier {
       await storage.write(key: 'token', value: token);
 
       await loadProfile(); // Load profile after login
+      await _loadFavorites();
 
       isLoading = false;
       notifyListeners();
@@ -50,7 +53,31 @@ class AuthProvider extends ChangeNotifier {
   Future<void> logout() async {
     await storage.delete(key: 'token');
     token = null;
+    favoriteCourtIds.clear();
     notifyListeners();
+  }
+
+  bool isFavoriteCourt(int courtId) => favoriteCourtIds.contains(courtId);
+
+  Future<void> toggleFavoriteCourt(int courtId) async {
+    if (favoriteCourtIds.contains(courtId)) {
+      favoriteCourtIds.remove(courtId);
+    } else {
+      favoriteCourtIds.add(courtId);
+    }
+    await storage.write(key: 'favorite_courts', value: favoriteCourtIds.join(','));
+    notifyListeners();
+  }
+
+  Future<void> _loadFavorites() async {
+    final raw = await storage.read(key: 'favorite_courts');
+    favoriteCourtIds.clear();
+    if (raw != null && raw.isNotEmpty) {
+      for (final part in raw.split(',')) {
+        final id = int.tryParse(part.trim());
+        if (id != null) favoriteCourtIds.add(id);
+      }
+    }
   }
 
   Future<void> loadProfile() async {
@@ -78,6 +105,13 @@ class AuthProvider extends ChangeNotifier {
 
     await api.topUp(token, amount);
     await loadProfile();
+  }
+
+  Future<void> requestTopUp(double amount) async {
+    final token = await storage.read(key: 'token');
+    if (token == null) return;
+
+    await api.requestTopUp(token, amount);
   }
 
   Future<bool> register(String username, String password, String fullName) async {

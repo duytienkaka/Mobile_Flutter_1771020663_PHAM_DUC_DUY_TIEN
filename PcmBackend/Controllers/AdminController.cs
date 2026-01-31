@@ -41,12 +41,15 @@ public class AdminController : ControllerBase
     }
 
     [HttpPut("users/{id}/role")]
-    public async Task<IActionResult> UpdateUserRole(int id, [FromBody] string role)
+    public async Task<IActionResult> UpdateUserRole(int id, [FromBody] UpdateRoleRequest request)
     {
         var member = await _context.Members.FindAsync(id);
         if (member == null) return NotFound();
 
-        member.Role = role;
+        var normalized = (request.Role ?? string.Empty).Trim().ToLowerInvariant();
+        if (normalized is not "admin" and not "user") return BadRequest("Role không hợp lệ");
+
+        member.Role = normalized == "admin" ? "Admin" : "User";
         await _context.SaveChangesAsync();
 
         return Ok();
@@ -105,6 +108,19 @@ public class AdminController : ControllerBase
         var bookings = await _context.Bookings
             .Include(b => b.Member)
             .Include(b => b.Court)
+            .OrderByDescending(b => b.StartTime)
+            .Select(b => new
+            {
+                b.Id,
+                MemberName = b.Member.FullName,
+                UserName = b.Member.UserName,
+                CourtName = b.Court.Name,
+                b.StartTime,
+                b.EndTime,
+                b.TotalPrice,
+                b.Status,
+                b.CreatedDate
+            })
             .ToListAsync();
 
         return Ok(bookings);
@@ -149,15 +165,60 @@ public class AdminController : ControllerBase
     [HttpGet("topup-requests")]
     public async Task<IActionResult> GetTopUpRequests()
     {
-        // For now, return wallet transactions that are pending
-        // In a real app, you'd have a separate TopUpRequest table
-        var transactions = await _context.WalletTransactions
-            .Include(t => t.Member)
-            .Where(t => t.Type == "TopUp" && t.Amount > 0)
-            .OrderByDescending(t => t.CreatedDate)
-            .ToListAsync();
+        try
+        {
+            var pending = await _context.WalletTransactions
+                .Include(t => t.Member)
+                .Where(t => !string.IsNullOrEmpty(t.Type) && EF.Functions.Like(t.Type!, "%TopUpPending%"))
+                .OrderByDescending(t => t.CreatedDate)
+                .Take(500)
+                .Select(t => new
+                {
+                    t.Id,
+                    t.Amount,
+                    t.Type,
+                    t.Description,
+                    t.CreatedDate,
+                    Member = new
+                    {
+                        t.Member.Id,
+                        t.Member.FullName,
+                        t.Member.UserName
+                    }
+                })
+                .ToListAsync();
 
-        return Ok(transactions);
+            return Ok(pending);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"GetTopUpRequests error: {ex}");
+            return StatusCode(500, ex.Message);
+        }
+    }
+
+    [HttpPost("topup-requests/{id}/approve")]
+    public async Task<IActionResult> ApproveTopUp(int id)
+    {
+        var transaction = await _context.WalletTransactions
+            .Include(t => t.Member)
+            .FirstOrDefaultAsync(t => t.Id == id && t.Type == "TopUpPending");
+
+        if (transaction == null)
+            return NotFound("Yêu cầu nạp tiền không tồn tại hoặc đã xử lý");
+
+        transaction.Type = "TopUpApproved";
+        transaction.Description = "Đã duyệt bởi admin";
+
+        transaction.Member.WalletBalance += transaction.Amount;
+
+        await _context.SaveChangesAsync();
+
+        return Ok(new
+        {
+            Message = "Đã duyệt nạp tiền",
+            WalletBalance = transaction.Member.WalletBalance
+        });
     }
 
     [HttpPost("courts")]

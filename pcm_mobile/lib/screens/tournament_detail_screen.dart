@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
@@ -33,8 +34,14 @@ class _TournamentDetailScreenState extends State<TournamentDetailScreen> {
         tournament = data;
       });
     } catch (e) {
+      String message = 'Lỗi không xác định';
+      if (e is DioException) {
+        message = e.response?.data?.toString() ?? e.message ?? message;
+      } else {
+        message = e.toString();
+      }
       setState(() {
-        error = 'Không tải được chi tiết giải đấu';
+        error = message;
       });
     } finally {
       setState(() {
@@ -169,8 +176,16 @@ class _TournamentDetailScreenState extends State<TournamentDetailScreen> {
                   const SnackBar(content: Text('Đăng ký thành công')),
                 );
               } catch (e) {
+                String message = 'Lỗi không xác định';
+                if (e is DioException) {
+                  final data = e.response?.data;
+                  final serverMessage = data is String ? data : data?.toString();
+                  message = _friendlyError(serverMessage ?? e.message ?? message);
+                } else {
+                  message = e.toString();
+                }
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Lỗi: $e')),
+                  SnackBar(content: Text(message)),
                 );
               }
             },
@@ -179,5 +194,13 @@ class _TournamentDetailScreenState extends State<TournamentDetailScreen> {
         ],
       ),
     );
+  }
+
+  String _friendlyError(String message) {
+    final lower = message.toLowerCase();
+    if (lower.contains('already registered')) return 'Bạn đã đăng ký giải đấu này rồi';
+    if (lower.contains('insufficient')) return 'Số dư ví không đủ để đăng ký';
+    if (lower.contains('not open')) return 'Giải đấu hiện không mở đăng ký';
+    return message;
   }
 }

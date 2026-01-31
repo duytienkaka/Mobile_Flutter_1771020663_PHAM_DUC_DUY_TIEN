@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
@@ -28,17 +29,35 @@ class _CourtScreenState extends State<CourtScreen> {
     try {
       final auth = Provider.of<AuthProvider>(context, listen: false);
       final token = await auth.storage.read(key: 'token');
+      if (token == null) {
+        throw Exception('token_missing');
+      }
 
-      final data = await auth.api.getCourts(token!);
+      final data = await auth.api.getCourts(token);
 
       setState(() {
         courts = data;
         filteredCourts = data;
+        error = null;
       });
     } catch (e) {
+      String message = 'Không tải được danh sách sân';
+      if (e is DioException) {
+        final data = e.response?.data;
+        if (data is Map && data['message'] != null) {
+          message = data['message'].toString();
+        } else if (data is String) {
+          message = data;
+        } else {
+          message = e.message ?? message;
+        }
+      } else if (e.toString().contains('token_missing')) {
+        message = 'Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.';
+      }
       setState(() {
-        error = 'Không tải được danh sách sân';
+        error = message;
       });
+      debugPrint('Courts load error: $e');
     } finally {
       setState(() {
         loading = false;
@@ -47,8 +66,10 @@ class _CourtScreenState extends State<CourtScreen> {
   }
 
   void filterCourts() {
+    final q = searchQuery.toLowerCase();
     List temp = courts.where((court) {
-      return court['name'].toLowerCase().contains(searchQuery.toLowerCase());
+      final name = court['name']?.toString().toLowerCase() ?? '';
+      return name.contains(q);
     }).toList();
 
     if (sortBy == 'price_low') {
@@ -104,66 +125,96 @@ class _CourtScreenState extends State<CourtScreen> {
             ),
           ),
           Expanded(
-            child: loading
-                ? const Center(child: CircularProgressIndicator())
-                : error != null
-                ? Center(
-                    child: Text(error!, style: const TextStyle(color: Colors.red)),
-                  )
-                : ListView.builder(
-                    itemCount: filteredCourts.length,
-                    itemBuilder: (context, index) {
-                      final court = filteredCourts[index];
-                      return Card(
-                        margin: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        elevation: 4,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: ListTile(
-                          leading: const Icon(
-                            Icons.sports_soccer,
-                            color: Colors.lightGreen,
-                          ),
-                          title: Text(
-                            court['name'],
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          subtitle: Text(
-                            'Giá: ${court['pricePerHour']} VNĐ / giờ',
-                            style: const TextStyle(color: Colors.grey),
-                          ),
-                          trailing: Column(
-                            children: [
-                              ElevatedButton(
-                                child: const Text('Đặt'),
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => BookingScreen(court: court),
+            child: RefreshIndicator(
+              onRefresh: loadCourts,
+              child: loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : error != null
+                      ? ListView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                children: [
+                                  Text(error!, style: const TextStyle(color: Colors.red)),
+                                  const SizedBox(height: 8),
+                                  ElevatedButton.icon(
+                                    onPressed: loadCourts,
+                                    icon: const Icon(Icons.refresh),
+                                    label: const Text('Thử lại'),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        )
+                      : ListView.builder(
+                          itemCount: filteredCourts.length,
+                          itemBuilder: (context, index) {
+                            final court = filteredCourts[index];
+                            return Card(
+                              margin: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
+                              elevation: 4,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: ListTile(
+                                leading: const Icon(
+                                  Icons.sports_soccer,
+                                  color: Colors.lightGreen,
+                                ),
+                                title: Text(
+                                  court['name']?.toString() ?? 'Sân',
+                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Giá: ${court['pricePerHour'] ?? '--'} VNĐ / giờ',
+                                      style: const TextStyle(color: Colors.grey),
                                     ),
-                                  );
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
+                                    TextButton(
+                                      onPressed: () => showReviewsDialog(court),
+                                      style: TextButton.styleFrom(
+                                        padding: EdgeInsets.zero,
+                                        minimumSize: Size.zero,
+                                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                      ),
+                                      child: const Text('Reviews'),
+                                    ),
+                                  ],
+                                ),
+                                trailing: ConstrainedBox(
+                                  constraints: const BoxConstraints(minWidth: 72, maxWidth: 110),
+                                  child: ElevatedButton(
+                                    child: const Text('Đặt'),
+                                    onPressed: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => BookingScreen(court: court),
+                                        ),
+                                      );
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      minimumSize: const Size(0, 40),
+                                    ),
                                   ),
                                 ),
                               ),
-                              TextButton(
-                                child: const Text('Reviews'),
-                                onPressed: () => showReviewsDialog(court),
-                              ),
-                            ],
-                          ),
+                            );
+                          },
                         ),
-                      );
-                    },
-                  ),
+            ),
           ),
         ],
       ),

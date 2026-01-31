@@ -17,7 +17,7 @@ public class WalletTransaction
 
     public string? Description { get; set; }
 
-    public DateTime CreatedDate { get; set; }
+    public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
 
     // Navigation
     public Member Member { get; set; }
